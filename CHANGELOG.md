@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- `npub --version` no longer prints a redundant `version v...`; the output is now `npub vX.Y.Z`.
+
 ### Changed
 
 - Simplify the README's Configuration section to point at the sample file, `npub init`, and `--config`; expand the assets cache explanation; add subheaders to Usage and a frontmatter example to Notes format.

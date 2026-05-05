@@ -591,6 +591,7 @@ func init() {
 		}
 	}
 	rootCmd.Version = Version
+	rootCmd.SetVersionTemplate("{{.Name}} {{.Version}}\n")
 
 	rootCmd.PersistentFlags().String("config", "", "config file path (default: npub.yml)")
 
