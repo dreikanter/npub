@@ -26,39 +26,17 @@ make build
 
 ## Configuration
 
-Create a `npub.yml` file:
+Run `npub init [dir]` to drop a commented `npub.yml` sample (defaults to the current directory). The sample lists every option with its default and a short description — edit it to suit your site. See [`npub.yml.sample`](./npub.yml.sample) for the full list.
 
-```yaml
-notes_path: "~/notes"
-site_root_url: "https://example.com"
-site_name: "My Notes"
-author_name: "Ada Lovelace"
-deploy_repo: "git@github.com:user/site.git"
+The recommended location is your notes directory itself:
+
+```sh
+npub init "$NOTES_PATH"
 ```
 
-All values can be overridden with CLI flags:
+Keeping `npub.yml` next to the notes lets discovery find it automatically (step 2 below) and versions the config alongside the content it describes.
 
-| Config option | CLI flag | Default | Required |
-|---|---|---|---|
-| `notes_path` | `--path` | `$NOTES_PATH` | |
-| `assets_path` | `--assets` | `<notes_path>/images` | |
-| `static_path` | `--static` | `<notes_path>/static` | |
-| `site_root_url` | `--url` | | Yes |
-| `site_name` | `--site-name` | | Yes |
-| `author_name` | `--author` | | Yes |
-| `license_name` | `--license-name` | CC BY 4.0 | |
-| `license_url` | `--license-url` | https://creativecommons.org/licenses/by/4.0/ | |
-| `intro` | | | |
-| `deploy_repo` | | | For `deploy` |
-| `cache_path` | | `~/.cache/npub/<repo>` | |
-
-The build output directory is not a config option. `npub build` writes to
-`<cache_path>/build` (where `cache_path` defaults to `~/.cache/npub/<repo>`).
-Either `deploy_repo` or `cache_path` must be set; there is no implicit `./dist`.
-`build` never talks to the deploy_repo remote — all git operations happen in
-`deploy`.
-
-Priority: CLI flags > YAML config.
+Point npub at a non-default config file with `--config <path>`. CLI flags override YAML values; use `npub config` to preview the merged result.
 
 Config file discovery order:
 
@@ -66,17 +44,13 @@ Config file discovery order:
 2. `npub.yml` inside `$NOTES_PATH` (or `--path` value) if it exists
 3. `npub.yml` in the current directory
 
-`NOTES_PATH` plays two roles: it is the default source for `notes_path` when
-neither `--path` nor the YAML sets it, and it acts as a hint location for
-config discovery (step 2).
-
-Run `npub init [dir]` to create a commented `npub.yml` sample in a directory. If `dir` is omitted, the current directory is used.
-
-The optional `intro` field renders as a paragraph above the posts list on the index page. Leave it empty or unset to omit.
+`NOTES_PATH` plays two roles: it is the default source for `notes_path` when neither `--path` nor the YAML sets it, and it acts as a hint location for config discovery (step 2).
 
 ### Image assets
 
-Downloaded images are cached in an assets directory, organized by note UID. By default this is the `images` subdirectory of `notes_path`. Override with `assets_path` in the config or `--assets` flag.
+Notes can embed images by URL. The first time a build encounters a new URL, npub downloads it into the assets directory under a per-note subfolder (`<assets_path>/<note_uid>/<filename>`) and records the URL→file mapping in `index.json`. Subsequent builds reuse the cached file, so each external host is hit only once per image. The cache survives across builds and is checked into your notes store, which keeps deploys offline-friendly and avoids broken images if the original URL disappears.
+
+The assets directory defaults to `<notes_path>/images`. Override with `assets_path` in the config or `--assets`.
 
 ### Static files
 
@@ -84,21 +58,23 @@ Files in the `static` subdirectory of `notes_path` are copied as-is to the build
 
 ## Usage
 
-Create a configuration file:
+### Initialize a project
 
 ```sh
-npub init
+npub init "$NOTES_PATH"   # recommended: place npub.yml inside your notes dir
 # or create a new project directory
 npub init ./my-notes-site
 ```
 
-Build the site:
+### Build the site
 
 ```sh
 npub build
 ```
 
-Inspect the resolved configuration:
+`npub build` writes the site to `<cache_path>/build` (where `cache_path` defaults to `~/.cache/npub/<repo>`). Either `deploy_repo` or `cache_path` must be set; there is no implicit `./dist`. `build` never contacts the deploy remote — all git operations happen in `deploy`.
+
+### Inspect resolved configuration
 
 ```sh
 npub config
@@ -106,26 +82,24 @@ npub config
 
 The `config` command prints the absolute path of the config file npub will use along with every option after merging YAML, CLI flags, environment variables, and defaults. It accepts the same overrides as `build`, so `npub config --path ~/notes --url https://example.com` previews how a build would see its configuration.
 
-Serve locally:
+### Serve locally
 
 ```sh
 npub serve
 ```
 
-The `serve` command starts a local HTTP server on `localhost:4000` (override with `--host` and `--port`). It serves `<cache_path>/build` (where `cache_path` defaults to `~/.cache/npub/<repo>`). Pass `--dir <path>` to point it at a different directory; either `deploy_repo` or `--dir` must be set.
+`serve` starts a local HTTP server on `localhost:4000` (override with `--host` and `--port`). It serves `<cache_path>/build`. Pass `--dir <path>` to point it at a different directory; either `deploy_repo` or `--dir` must be set.
 
-Deploy to a git remote:
+### Deploy
 
 ```sh
 npub build
 npub deploy
 ```
 
-`npub build` writes the site to `~/.cache/npub/<repo>/build`. It never contacts the remote — everything is offline.
-
 `npub deploy` keeps a bare clone of `deploy_repo` at `~/.cache/npub/<repo>/git` and uses `~/.cache/npub/<repo>/build` as a temporary work-tree (via git's `--git-dir` and `--work-tree` options) when committing. There is no second copy of the site on disk: deploy fetches, points git at the build directory, and runs `add -A` + commit + push. Stale files are removed and changed files updated by the same `add -A` pass. Use `--dry-run` to commit locally without pushing.
 
-Clear the managed build output:
+### Clear the build output
 
 ```sh
 npub clear
@@ -135,7 +109,35 @@ npub clear
 
 ## Notes format
 
-Notes are Markdown files managed by [notes](https://github.com/dreikanter/notes). A note becomes part of the published site when its frontmatter includes `public: true`.
+Notes are Markdown files with YAML frontmatter, managed by [notes](https://github.com/dreikanter/notes). A note is published only when its frontmatter includes `public: true`.
+
+Recognized frontmatter fields:
+
+- `title` — page heading; also the fallback for `slug`.
+- `slug` — URL slug. If omitted, npub slugifies `title` and falls back to the numeric note ID.
+- `public` — boolean; only `true` notes are published.
+- `created_at` — RFC 3339 timestamp; controls feed and index ordering (newest first).
+- `tags` — list of strings; each tag gets its own index page.
+- `description` — optional meta description for SEO.
+
+Example:
+
+```markdown
+---
+title: Hello, world
+public: true
+created_at: 2026-01-15T09:00:00Z
+tags:
+  - intro
+  - golang
+---
+
+This is the body of the note in **Markdown**.
+
+![A diagram](https://example.com/diagram.png)
+```
+
+Image URLs in the body are downloaded into the assets cache on first build (see [Image assets](#image-assets)).
 
 ## Versioning
 
