@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Changed
+
+- Brighten prose links in dark mode for higher contrast.
+
 ## [0.2.18] - 2026-05-02
 
 ### Added
